@@ -34,6 +34,7 @@ from soup_cli.commands import (  # noqa: E402
     history,
     infer,
     init,
+    learn,
     merge,
     migrate,
     profile,
@@ -98,6 +99,7 @@ app = typer.Typer(
 
 # Register sub-commands
 app.command()(init.init)
+app.add_typer(learn.app, name="learn")
 app.command()(train.train)
 app.command()(chat.chat)
 app.command()(cost.cost)
