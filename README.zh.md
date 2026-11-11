@@ -1,4 +1,4 @@
-<!-- synced-from: README.md sha256:aa2170df59636760e0235b87cddf967a14e932605ed3abb16480115d99db6e40 -->
+<!-- synced-from: README.md sha256:5b6f673980b6bde5f8ed773ccd4df9608983316e8de5a9e85870b185563c8a3e -->
 <p align="center">🌍 <a href="README.md">English</a> | <a href="README.tr.md">Türkçe</a> | <a href="README.ar.md">العربية</a> | <a href="README.ja.md">日本語</a> | <strong>中文</strong></p>
 
 <p align="center">
@@ -257,6 +257,7 @@ output: ./output
 | 指南 | 内容 |
 |---|---|
 | [训练任务与方法](docs/training.md) | SFT、DPO/GRPO/PPO/KTO/ORPO/SimPO/IPO/BCO、tool-calling、PRM、预训练、蒸馏、分类、视觉/音频/TTS、机器遗忘、RAFT/RA-DIT、训练循环加固检测器 |
+| [从零训练（`soup learn`）](docs/scratch-training.md) | 从你批准的素材中循序训练一个真正未训练的模型（无预训练权重）——所有训练都在远程 Modal 上运行 |
 | [PEFT、长上下文与效率](docs/peft-and-efficiency.md) | DoRA、LoRA+、rsLoRA、VeRA、OLoRA、NEFTune、PiSSA、ReLoRA、optimizer 与 PEFT 工具集、LLaMA Pro、GaLore、YaRN/LongLoRA、packing、课程学习、自动调参 |
 | [性能与量化](docs/performance-and-quantization.md) | QAT、FP8、量化菜单（I + II）、KV-cache、NVFP4、保存格式、Cut Cross-Entropy、gradient checkpointing、kernel、activation offloading、layer streaming、多 GPU / DeepSpeed / FSDP |
 | [数据工程](docs/data.md) | 格式、对齐 Axolotl/LF 的数据管线、数据工具、合成生成与 forge、质量记分卡、trace 工具、远程数据集、混合、recipe DAG |
@@ -289,11 +290,32 @@ soup export --model ./output --format gguf           # 导出用于部署
 soup eval   benchmark --model ./output               # 评测
 soup data   inspect ./data/train.jsonl               # 数据集统计
 soup recipes list                     # 100+ 个现成模型配方
+soup learn Python --from ./notes.md   # 从素材学习一个主题（在 Modal 上远程训练）
 soup autopilot --model <id> --data d.jsonl --goal chat  # 零配置
 soup doctor                           # 检查 GPU / 依赖 / 环境
 ```
 
 完整的命令列表在 [`docs/commands.md`](docs/commands.md)。
+
+### 学习一个新主题（`soup learn`）
+
+`soup learn <request>` 把素材（主题文件、文档或数据集）收进**待审（pending）**
+示例——训练前你逐条审阅并显式批准。训练**只在远程 Modal 上运行**（默认仅
+出计划；用 `--cloud-submit` 真正提交；绝无静默本地回退），然后由
+`evaluate` → `register` → `generate` 闭环：
+
+```bash
+soup learn Python --from ./notes.md    # or: soup learn from this document report.md
+soup learn review
+soup learn approve --all
+soup learn prepare --version v1
+soup learn train --dataset v1 --gpu a10g --cloud-submit
+soup learn evaluate learn/runs/v1-run --dataset v1
+soup learn register learn/runs/v1-run --dataset v1 --name my-scratch-v1
+soup learn generate learn/runs/v1-run --prompt "hello"
+```
+
+完整指南：[`docs/scratch-training.md`](docs/scratch-training.md)。
 
 ## 支持的模型
 

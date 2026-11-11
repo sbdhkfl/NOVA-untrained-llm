@@ -87,6 +87,7 @@ Usage: `soup [OPTIONS] <command> [ARGS]...`
 | [`soup ingest`](#soup-ingest) | Universal trace importer: Langfuse / LangSmith / Helicone / OpenPipe / OTel / OpenAI Stored Completions (v0.63.0). |
 | [`soup init`](#soup-init) | Create a new soup.yaml config interactively or from a template. |
 | [`soup iterative-dpo`](#soup-iterative-dpo) | Iterative DPO sample, score, pair, and train loop. |
+| [`soup learn`](#soup-learn) | Learn a language model from scratch: `soup learn <topic>` or `soup learn from this document\|dataset <path>` to collect material, then review/approve, train REMOTELY (Modal) and register the result. |
 | [`soup license-advisor`](#soup-license-advisor) | Recommend a license-clean base for a deploy target (b2c / defense / embedded) + flag downstream risk (v0.64.0). |
 | [`soup llama`](#soup-llama) | Proxy to llama.cpp binaries (cli / mtmd-cli / gguf-split / server). |
 | [`soup local-rl`](#soup-local-rl) | Personal-LLM flywheel daemon (init / status / record / harvest / train) (v0.68.0). |
@@ -1319,7 +1320,7 @@ Usage: `soup data generate [OPTIONS]`
 | Name | Type | Default | Required | Help |
 |---|---|---|---|---|
 | `--prompt`, `-p` | text |  | yes | System prompt describing what kind of data to generate |
-| `--count`, `-n` | integer | `100` |  | Number of examples to generate |
+| `--count`, `-n` | integer | `100` |  | Number of examples requested |
 | `--output`, `-o` | text | `generated.jsonl` |  | Output file path |
 | `--format`, `-f` | text | `alpaca` |  | Output format: alpaca, sharegpt, chatml |
 | `--provider` | text | `openai` |  | LLM provider: openai, local, server, ollama, anthropic, vllm |
@@ -2470,6 +2471,196 @@ Usage: `soup iterative-dpo [OPTIONS] [<command>] [ARGS]...`
 | `--rounds` | integer | `3` |  | Number of iterative-DPO rounds |
 | `--pairs-per-round` | integer | `500` |  | Number of (chosen, rejected) pairs per round |
 | `--plan-only` | flag | off |  | Print the resolved plan and exit (no training). |
+
+## `soup learn`
+
+Learn a language model from scratch: `soup learn <topic>` or `soup learn from this document\|dataset <path>` to collect material, then review/approve, train REMOTELY (Modal) and register the result.
+
+Usage: `soup learn <command> [ARGS]...`
+
+Subcommands:
+
+- [`approve`](#soup-learn-approve)
+- [`edit`](#soup-learn-edit)
+- [`evaluate`](#soup-learn-evaluate)
+- [`generate`](#soup-learn-generate)
+- [`ingest`](#soup-learn-ingest)
+- [`models`](#soup-learn-models)
+- [`prepare`](#soup-learn-prepare)
+- [`register`](#soup-learn-register)
+- [`reject`](#soup-learn-reject)
+- [`review`](#soup-learn-review)
+- [`start`](#soup-learn-start)
+- [`status`](#soup-learn-status)
+- [`train`](#soup-learn-train)
+
+### `soup learn approve`
+
+Explicitly approve examples for training (never automatic).
+
+Usage: `soup learn approve [OPTIONS] [EXAMPLE_IDS]...`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `EXAMPLE_IDS...` | text, any number |  |  | Example ids to approve. |
+| `--all` | flag | off |  | Approve every pending example. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn edit`
+
+Edit an example; the edited example returns to pending for re-review.
+
+Usage: `soup learn edit [OPTIONS] EXAMPLE_ID`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `EXAMPLE_ID` | text |  | yes | Example id (see `soup learn review`). |
+| `--text`, `-t` | text |  |  | Replacement text. |
+| `--file`, `-f` | text |  |  | File with replacement text. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn evaluate`
+
+Evaluate a downloaded checkpoint (real metrics from a real model).
+
+Usage: `soup learn evaluate [OPTIONS] RUN_DIR`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `RUN_DIR` | text |  | yes | Downloaded run dir (or checkpoint dir). |
+| `--dataset`, `-d` | text |  | yes | Dataset version to eval on. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn generate`
+
+Generate text with a trained checkpoint (inference, no training).
+
+Usage: `soup learn generate [OPTIONS] RUN_DIR`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `RUN_DIR` | text |  | yes | Downloaded run dir (or checkpoint dir). |
+| `--prompt`, `-p` | text |  | yes | Prompt to continue. |
+| `--max-tokens` | integer, 1 to 4096 | `64` |  | Tokens to generate. |
+| `--temperature` | float, 0.0 to 2.0 | `0.0` |  | Sampling temperature (0 = greedy). |
+| `--seed` | integer | `0` |  | Sampling seed. |
+
+### `soup learn ingest`
+
+Ingest learning material (lands in pending — NOT approved yet).
+
+Usage: `soup learn ingest [OPTIONS] [FILE]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `FILE` | text |  |  | Text file to ingest. |
+| `--text`, `-t` | text |  |  | Inline text to ingest. |
+| `--source` | text |  |  | Provenance label. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn models`
+
+List registered models produced by `soup learn`.
+
+Usage: `soup learn models [OPTIONS]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `--limit`, `-l` | integer, 1 to 1000 | `50` |  | Maximum entries. |
+
+### `soup learn prepare`
+
+Tokenise APPROVED examples into a versioned train/val dataset.
+
+Usage: `soup learn prepare [OPTIONS]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `--version`, `-v` | text |  | yes | Dataset version tag. |
+| `--vocab-size` | integer, at least 260 | `512` |  | Tokenizer vocabulary size. |
+| `--val-fraction` | float, 0.01 to 0.5 | `0.1` |  | Validation split fraction. |
+| `--seed` | integer | `1337` |  | Split shuffle seed. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn register`
+
+Register the trained checkpoint in the model registry.
+
+Usage: `soup learn register [OPTIONS] RUN_DIR`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `RUN_DIR` | text |  | yes | Downloaded run dir (or checkpoint dir). |
+| `--dataset`, `-d` | text |  | yes | Dataset version trained on. |
+| `--name`, `-n` | text |  | yes | Registry entry name. |
+| `--tag` | text | `scratch` |  | Registry tag. |
+| `--notes` | text |  |  | Free-form notes. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn reject`
+
+Reject pending examples (they will never be trained on).
+
+Usage: `soup learn reject [OPTIONS] EXAMPLE_IDS...`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `EXAMPLE_IDS...` | text, any number |  | yes | Example ids to reject. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn review`
+
+Review pending / approved / rejected examples.
+
+Usage: `soup learn review [OPTIONS]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `--root` | text | `learn` |  | Workflow root directory. |
+| `--show`, `-n` | integer | `10` |  | Examples to preview per bucket. |
+
+### `soup learn start`
+
+Start learning from a free-form request (material lands in pending).
+
+Usage: `soup learn start [OPTIONS] REQUEST...`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `REQUEST...` | text, any number |  | yes | Learning request: "Python", "how computers work", "from this document notes.md", "from this dataset data.jsonl". |
+| `--from` | text |  |  | File or directory of learning material for a topic. |
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn status`
+
+Show workflow state: examples, datasets, remote-run progress, models.
+
+Usage: `soup learn status [OPTIONS]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `--root` | text | `learn` |  | Workflow root directory. |
+
+### `soup learn train`
+
+Plan (and optionally submit) REMOTE from-scratch training on Modal.
+
+Usage: `soup learn train [OPTIONS]`
+
+| Name | Type | Default | Required | Help |
+|---|---|---|---|---|
+| `--dataset`, `-d` | text |  | yes | Prepared dataset version. |
+| `--gpu` | text | `a10g` |  | Modal GPU type. |
+| `--cloud-submit` | flag | off |  | Actually submit the remote run. |
+| `--epochs` | integer, at least 1 | `3` |  | Training epochs. |
+| `--batch-size` | integer, at least 1 | `8` |  | Batch size. |
+| `--lr` | float, at least 1e-08 | `0.0003` |  | Learning rate. |
+| `--layers` | integer, at least 1 | `4` |  | Transformer layers. |
+| `--heads` | integer, at least 1 | `4` |  | Attention heads. |
+| `--d-model` | integer, at least 8 | `128` |  | Model width. |
+| `--block-size` | integer, at least 16 | `256` |  | Context length. |
+| `--run-name` | text |  |  | Remote run name. |
+| `--root` | text | `learn` |  | Workflow root directory. |
 
 ## `soup license-advisor`
 

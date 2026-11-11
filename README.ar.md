@@ -1,4 +1,4 @@
-<!-- synced-from: README.md sha256:aa2170df59636760e0235b87cddf967a14e932605ed3abb16480115d99db6e40 -->
+<!-- synced-from: README.md sha256:5b6f673980b6bde5f8ed773ccd4df9608983316e8de5a9e85870b185563c8a3e -->
 <p align="center">🌍 <a href="README.md">English</a> | <a href="README.tr.md">Türkçe</a> | <strong>العربية</strong> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a></p>
 
 <p align="center">
@@ -261,6 +261,7 @@ output: ./output
 | الدليل | ما يغطيه |
 |---|---|
 | [مهام التدريب وأساليبه](docs/training.md) | SFT وDPO/GRPO/PPO/KTO/ORPO/SimPO/IPO/BCO، واستدعاء الأدوات، وPRM، والتدريب المسبق، والتقطير، والتصنيف، والرؤية/الصوت/TTS، وإلغاء التعلّم، وRAFT/RA-DIT، وكواشف تحصين الحلقات التكرارية (loops) ضد الأعطال |
+| [التدريب من الصفر (`soup learn`)](docs/scratch-training.md) | درّب نموذجًا غير مدرَّب فعليًا (بلا أوزان مسبقة التدريب) تدريجيًا من المادة التي تقرّها — يجري كل التدريب عن بُعد على Modal |
 | [PEFT والسياق الطويل والكفاءة](docs/peft-and-efficiency.md) | DoRA و<span dir="ltr">LoRA+</span> وrsLoRA وVeRA وOLoRA وNEFTune وPiSSA وReLoRA، ومجموعة المُحسِّنات وطرائق PEFT، وLLaMA Pro وGaLore وYaRN/LongLoRA، والتعبئة (packing)، والمنهج التدريجي (curriculum)، والضبط التلقائي |
 | [الأداء والتكميم](docs/performance-and-quantization.md) | QAT وFP8 وقائمة التكميم (I + II) وذاكرة KV المؤقتة وNVFP4 وصيغ الحفظ وCut Cross-Entropy ونقاط فحص التدرّج (gradient checkpointing) والنوى (kernels) ونقل التنشيطات (activation offloading) وبثّ الطبقات وتعدد GPU / DeepSpeed / FSDP |
 | [هندسة البيانات](docs/data.md) | الصيغ، وخط أنابيب مكافئ لـ Axolotl/LF، وأدوات البيانات، والتوليد الاصطناعي وforge، وبطاقات تقييم الجودة، وأدوات التتبّع (trace)، ومجموعات البيانات البعيدة، والمزج، ورسوم الوصفات الموجَّهة (DAG) |
@@ -295,11 +296,33 @@ soup export --model ./output --format gguf           # صدِّر للنشر
 soup eval   benchmark --model ./output               # قيِّم
 soup data   inspect ./data/train.jsonl               # إحصاءات مجموعة البيانات
 soup recipes list                     # أكثر من 100 وصفة نموذج جاهزة
+soup learn Python --from ./notes.md   # تعلّم موضوعًا من المادة (تدريب عن بُعد على Modal)
 soup autopilot --model <id> --data d.jsonl --goal chat  # بلا إعدادات
 soup doctor                           # افحص GPU / الاعتماديات / البيئة
 ```
 
 قائمة الأوامر الكاملة موجودة في [`docs/commands.md`](docs/commands.md).
+
+### تعلّم موضوع جديد (`soup learn`)
+
+تأتي الأوامر عبر `soup learn <request>` على شكل مادة (ملفات الموضوع، أو مستند،
+أو مجموعة بيانات) كأمثلة **معلّقة (pending)** — تراجع كل مثال وتوافق عليه
+صراحةً قبل أي تدريب. يجري التدريب **على Modal عن بُعد فقط** (وضع التخطيط
+افتراضيًا؛ وللإطلاق `--cloud-submit`؛ لا تراجع محلي صامت)، ثم يغلق
+`evaluate` → `register` → `generate` الحلقة:
+
+```bash
+soup learn Python --from ./notes.md    # or: soup learn from this document report.md
+soup learn review
+soup learn approve --all
+soup learn prepare --version v1
+soup learn train --dataset v1 --gpu a10g --cloud-submit
+soup learn evaluate learn/runs/v1-run --dataset v1
+soup learn register learn/runs/v1-run --dataset v1 --name my-scratch-v1
+soup learn generate learn/runs/v1-run --prompt "hello"
+```
+
+الدليل الكامل: [`docs/scratch-training.md`](docs/scratch-training.md).
 
 ## النماذج المدعومة
 

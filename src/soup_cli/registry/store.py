@@ -50,6 +50,8 @@ _VALID_KINDS = frozenset(
         "adapter", "merged", "gguf", "awq", "gptq", "onnx", "dataset", "config",
         "eval_results", "tensorrt", "eval_suite", "canaries",
         "diagnose_report", "torchao",
+        # soup learn — from-scratch training checkpoints (model.safetensors).
+        "checkpoint",
         # v0.62.0 Part C — Activation steering vectors (CAA / ITI / RepE).
         "steering_vector",
         # v0.71.1 #214 — pairwise-judge calibration reports.

@@ -1,4 +1,4 @@
-<!-- synced-from: README.md sha256:aa2170df59636760e0235b87cddf967a14e932605ed3abb16480115d99db6e40 -->
+<!-- synced-from: README.md sha256:5b6f673980b6bde5f8ed773ccd4df9608983316e8de5a9e85870b185563c8a3e -->
 <p align="center">🌍 <a href="README.md">English</a> | <strong>Türkçe</strong> | <a href="README.ar.md">العربية</a> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a></p>
 
 <p align="center">
@@ -268,6 +268,7 @@ Tam özellik başvurusu [`docs/`](docs/) içinde. Buradan başlayın:
 | Rehber | Kapsam |
 |---|---|
 | [Eğitim görevleri ve yöntemleri](docs/training.md) | SFT, DPO/GRPO/PPO/KTO/ORPO/SimPO/IPO/BCO, araç çağırma, PRM, ön eğitim, damıtma, sınıflandırma, görsel/ses/TTS, unlearning (öğrenileni silme), RAFT/RA-DIT, döngü sertleştirme algılayıcıları |
+| [Sıfırdan eğitim (`soup learn`)](docs/scratch-training.md) | Ön eğitimli ağırlıklar olmadan gerçekten eğitilmemiş bir modeli, onayladığınız materyalle kademeli olarak eğitin — tüm eğitim Modal üzerinde uzaktan çalışır |
 | [PEFT, uzun bağlam ve verimlilik](docs/peft-and-efficiency.md) | DoRA, LoRA+, rsLoRA, VeRA, OLoRA, NEFTune, PiSSA, ReLoRA, optimizer ve PEFT çeşitliliği, LLaMA Pro, GaLore, YaRN/LongLoRA, paketleme, müfredat, otomatik ayarlama |
 | [Performans ve niceleme](docs/performance-and-quantization.md) | QAT, FP8, Niceleme Menüsü (I + II), KV önbelleği, NVFP4, kaydetme biçimleri, Cut Cross-Entropy, gradyan checkpointing'i (kontrol noktası), çekirdekler, aktivasyon boşaltma, katman akışı, çoklu GPU / DeepSpeed / FSDP |
 | [Veri mühendisliği](docs/data.md) | Biçimler, Axolotl/LF eşdeğeri ardışık düzen, veri araçları, sentetik üretim ve forge, kalite karneleri, iz (trace) araçları, uzak veri kümeleri, karıştırma, tarif DAG'ları |
@@ -301,11 +302,34 @@ soup export --model ./output --format gguf           # dağıtım için dışa a
 soup eval   benchmark --model ./output               # değerlendirin
 soup data   inspect ./data/train.jsonl               # veri kümesi istatistikleri
 soup recipes list                     # 100+ hazır model tarifi
+soup learn Python --from ./notes.md   # materyalle bir konu öğrenin (Modal üzerinde uzaktan eğitilir)
 soup autopilot --model <id> --data d.jsonl --goal chat  # sıfır yapılandırma
 soup doctor                           # GPU / bağımlılıklar / ortamı denetleyin
 ```
 
 Tam komut listesi [`docs/commands.md`](docs/commands.md) içinde.
+
+### Yeni bir konu öğrenme (`soup learn`)
+
+`soup learn <request>` materyali (konu dosyaları, bir belge veya bir veri
+kümesi) **bekleyen** örnekler olarak alır — eğitimden önce her birini
+inceleyip onaylarsınız. Eğitim **yalnızca Modal üzerinde uzaktan** çalışır
+(varsayılan olarak yalnızca planlama; başlatmak için `--cloud-submit`; sessiz
+yerel yedeği yoktur), ardından `evaluate` → `register` → `generate` döngüyü
+kapatır:
+
+```bash
+soup learn Python --from ./notes.md    # or: soup learn from this document report.md
+soup learn review
+soup learn approve --all
+soup learn prepare --version v1
+soup learn train --dataset v1 --gpu a10g --cloud-submit
+soup learn evaluate learn/runs/v1-run --dataset v1
+soup learn register learn/runs/v1-run --dataset v1 --name my-scratch-v1
+soup learn generate learn/runs/v1-run --prompt "hello"
+```
+
+Tam yol haritası: [`docs/scratch-training.md`](docs/scratch-training.md).
 
 ## Desteklenen Modeller
 

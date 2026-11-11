@@ -75,6 +75,7 @@ def clean_text(text: str) -> str:
     if not isinstance(text, str):
         raise TypeError(f"expected str, got {type(text).__name__}")
     text = unicodedata.normalize("NFC", text)
+    text = text.lstrip("\ufeff")  # Windows editors often prefix a BOM
     text = _CONTROL_RE.sub(" ", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -179,6 +180,30 @@ class ScratchDatasetStore:
     def reject(self, example_id: str) -> ScratchExample:
         """Move a pending example to rejected."""
         return self._move(example_id, "pending", "rejected", "rejected")
+
+    def get(self, example_id: str) -> ScratchExample:
+        """Look an example up in any bucket."""
+        for sub in ("pending", "approved", "rejected"):
+            path = os.path.join(self.root, sub, f"{example_id}.json")
+            if os.path.isfile(path):
+                with open(path, encoding="utf-8") as fh:
+                    return ScratchExample(**json.load(fh))
+        raise FileNotFoundError(f"no such example: {example_id}")
+
+    def edit(self, example_id: str, new_text: str) -> ScratchExample:
+        """Replace an example's text. The edited example returns to
+        ``pending`` — changed material must be re-approved before training,
+        whether it was pending, approved or rejected before."""
+        old = self.get(example_id)
+        cleaned = clean_text(new_text)
+        checks = validate_text(cleaned)
+        if not checks["passed"]:
+            raise ValueError(f"edited text fails validation: {checks}")
+        os.remove(os.path.join(self.root, old.status, f"{example_id}.json"))
+        example = ScratchExample(text=cleaned, source=old.source, validation=checks)
+        path = os.path.join(self.root, "pending", f"{example.example_id}.json")
+        self._write_json(path, example.to_dict())
+        return example
 
     def approve_all(self) -> list[ScratchExample]:
         """Approve every pending example (must be called explicitly)."""

@@ -25,8 +25,8 @@ console = Console()
 @dataclass
 class ScratchModelConfig:
     """Configuration for a from-scratch transformer. Single source of truth
-    for the architecture (mirrored into the pydantic ``soup.learn`` config
-    via ``scratch.model`` in ``src/soup_cli/config/schema.py``)."""
+    for the architecture; self-contained (no ``soup.yaml`` schema changes),
+    serialised into dataset plans, remote payloads and checkpoints."""
 
     vocab_size: int = 256
     block_size: int = 256  # context length / positional embedding size

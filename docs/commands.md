@@ -271,6 +271,24 @@ soup bench infer <model> --p50 --p95          Bench with tail-latency percentile
 soup bench infer <model> --cuda-graphs         Bench with experimental CUDA graph decode
 soup bench train --config soup.yaml --steps 20 --warmup 3 -o bench-train.json  Timed SFT steps; exits 1 when the model was not training (#836)
 soup bench <model> --backend auto             Auto-detect transformers/mlx backend (v0.53.9)
+soup learn Python                             Free-form start: ingest topic material as pending examples (material dir or --from required)
+soup learn how computers work                 Same router for any multi-word topic
+soup learn from this document notes.md        Ingest a document's text as pending examples
+soup learn from this dataset data.jsonl       Ingest dataset rows (alpaca/chat/text) as pending examples
+soup learn start <request> [--from F]         Explicit form of the free-form route above
+soup learn ingest [FILE|--text T] [--source S]  Add one file/inline example (pending, never auto-approved)
+soup learn review                             List pending / approved / rejected examples
+soup learn approve <id>|--all                 Approve examples so they can enter a dataset version
+soup learn reject <id>                        Reject an example
+soup learn edit <id> --text T                 Edit an example (it returns to pending)
+soup learn prepare --version v1               Tokenize + split approved examples into a versioned dataset
+soup learn train --dataset v1 [--gpu a10g]    Render the Modal training plan + stub (plan-only by default)
+soup learn train ... --cloud-submit           Submit the remote job to Modal (requires `modal setup`; no local fallback)
+soup learn evaluate <run> --dataset v1        Eval loss / perplexity on the run's held-out split
+soup learn register <run> --dataset v1 --name n  Register a finished run (requires run_report.json evidence)
+soup learn generate <run> --prompt P          Load the run's checkpoint and generate a continuation
+soup learn models                             List registered from-scratch models
+soup learn status                             Examples, dataset versions, plan progress, registered models
 soup serve --model ./output --reasoning-parser deepseek-r1   Strip <think> blocks from responses (v0.53.9)
 soup doctor [--nccl] [--disk] [--config F]    Check environment (optionally check NCCL bandwidth, media type; --disk ~9s cold / ~2.4s warm).
                                               --config also reports which settings that config switches on (a `false` or unset value is not reported; `seed: 0` is) that its task/backend does not read (#755, #1330); exits 2 if it cannot be read, and exits 1 when a required core dependency is missing, or when any installed package is beyond its declared ceiling — core or [train] (#828, #874).

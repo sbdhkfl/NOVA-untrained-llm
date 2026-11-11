@@ -263,6 +263,7 @@ The full feature reference lives in [`docs/`](docs/). Start here:
 | Guide | Covers |
 |---|---|
 | [Training tasks & methods](docs/training.md) | SFT, DPO/GRPO/PPO/KTO/ORPO/SimPO/IPO/BCO, tool-calling, PRM, pre-training, distillation, classification, vision/audio/TTS, unlearning, RAFT/RA-DIT, loop-hardening detectors |
+| [From-scratch training (`soup learn`)](docs/scratch-training.md) | Train a genuinely untrained model (no pretrained weights) progressively from material you approve — all training runs remotely on Modal |
 | [PEFT, long context & efficiency](docs/peft-and-efficiency.md) | DoRA, LoRA+, rsLoRA, VeRA, OLoRA, NEFTune, PiSSA, ReLoRA, optimizer & PEFT zoo, LLaMA Pro, GaLore, YaRN/LongLoRA, packing, curriculum, auto-tuning |
 | [Performance & quantization](docs/performance-and-quantization.md) | QAT, FP8, Quant Menu (I + II), KV-cache, NVFP4, save formats, Cut Cross-Entropy, gradient checkpointing, kernels, activation offloading, layer streaming, multi-GPU / DeepSpeed / FSDP |
 | [Data engineering](docs/data.md) | Formats, the Axolotl/LF-parity pipeline, data tools, synthetic generation & forge, quality scorecards, trace tooling, remote datasets, mixing, recipe DAGs |
@@ -296,11 +297,33 @@ soup export --model ./output --format gguf           # export for deployment
 soup eval   benchmark --model ./output               # evaluate
 soup data   inspect ./data/train.jsonl               # dataset stats
 soup recipes list                     # 100+ ready-made model recipes
+soup learn Python --from ./notes.md   # learn a topic from material (trains remotely on Modal)
 soup autopilot --model <id> --data d.jsonl --goal chat  # zero-config
 soup doctor                           # check GPU / deps / environment
 ```
 
 The complete command list is in [`docs/commands.md`](docs/commands.md).
+
+### Learning a new subject (`soup learn`)
+
+`soup learn <request>` ingests material (topic files, a document, or a
+dataset) as **pending** examples — you review and approve each one before
+anything is trained. Training runs **remotely on Modal only** (plan-only by
+default, `--cloud-submit` to launch; never a silent local fallback), then
+`evaluate` → `register` → `generate` close the loop:
+
+```bash
+soup learn Python --from ./notes.md    # or: soup learn from this document report.md
+soup learn review
+soup learn approve --all
+soup learn prepare --version v1
+soup learn train --dataset v1 --gpu a10g --cloud-submit
+soup learn evaluate learn/runs/v1-run --dataset v1
+soup learn register learn/runs/v1-run --dataset v1 --name my-scratch-v1
+soup learn generate learn/runs/v1-run --prompt "hello"
+```
+
+Full walkthrough: [`docs/scratch-training.md`](docs/scratch-training.md).
 
 ## Supported Models
 

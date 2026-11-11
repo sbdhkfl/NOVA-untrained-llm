@@ -153,10 +153,12 @@ def render_scratch_modal_stub(
     )
 
 
+# Built as a format template; every literal brace in the generated source is
+# doubled. The payload, run name and output dir are repr()-embedded data.
 _STUB_TEMPLATE = '''\
 """Auto-generated Modal stub for SOUP from-scratch training (soup learn).
 
-Do not edit by hand — regenerate with `soup learn train --cloud modal`.
+Do not edit by hand — regenerate with `soup learn train --cloud-submit`.
 The training payload (configs, tokenizer, tokenised dataset) is base64
 embedded as data below. Checkpoints land on the `soup-outputs` volume under
 `/{run_name}/` and are downloaded to `{output_dir}/` when the run ends.
@@ -164,7 +166,7 @@ embedded as data below. Checkpoints land on the `soup-outputs` volume under
 
 import base64
 import json
-import os
+import pathlib
 
 import modal
 
@@ -179,44 +181,74 @@ image = (
 volume = modal.Volume.from_name("soup-outputs", create_if_missing=True)
 
 
-@app.function(image=image, gpu=modal.GPU("{gpu_modal}"), timeout=60 * 60 * 4, secrets=[])
+@app.function(
+    image=image, gpu="{gpu_modal}", timeout=60 * 60 * 4, volumes={{"/outputs": volume}}
+)
 def train() -> None:
     blob = base64.b64decode(PAYLOAD_B64)
     payload = json.loads(blob)
     assert payload["format"] == "soup-scratch-remote"
     from soup_cli.scratch.remote_train import run_remote_training
-    run_remote_training(payload, output_dir=f"/outputs/{{RUN_NAME}}")
+
+    # The run directory lives ON the volume, so checkpoints survive the
+    # container and outlive the run.
+    run_dir = pathlib.Path("/outputs") / RUN_NAME
+    run_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        run_remote_training(payload, output_dir=str(run_dir))
+    finally:
+        volume.commit()
 
 
 def _is_file(entry) -> bool:
-    return not entry.is_dir()
+    return entry.type == modal.volume.FileEntryType.FILE
 
 
 def _download(prefix: str, local_root: str) -> int:
-    os.makedirs(local_root, exist_ok=True)
-    n = 0
-    with volume.batch_upload() as batch:
-        pass  # files are fetched per-entry below
-    return n
+    root = pathlib.Path(local_root).resolve()
+    count = 0
+    for entry in volume.listdir(prefix, recursive=True):
+        if not _is_file(entry):
+            continue
+        # Volume paths may or may not carry a leading '/'. The entry's path
+        # below the run directory is kept, and the RESOLVED destination must
+        # stay inside the local output root.
+        rel = pathlib.PurePosixPath(entry.path.lstrip("/")).relative_to(prefix.strip("/"))
+        dest = root.joinpath(*rel.parts).resolve()
+        if root not in dest.parents:
+            raise RuntimeError(f"refusing to write outside {{root}}: {{entry.path}}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with dest.open("wb") as handle:
+            for chunk in volume.read_file(entry.path):
+                handle.write(chunk)
+        count += 1
+    return count
 
 
 def _fetch_outputs() -> None:
-    """Download every file under the run directory on the volume."""
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    try:
-        with volume.batch_download() as batch:
-            batch.get_directory(f"/{{RUN_NAME}}", OUTPUT_DIR)
-    except Exception as exc:  # noqa: BLE001 — report, do not swallow
-        print(f"WARNING: output download failed: {{exc}}")
-        print(
-            f"Retry manually with: "
-            f"`modal volume get soup-outputs /{{RUN_NAME}} {{OUTPUT_DIR}}`"
-        )
+    count = _download(f"/{{RUN_NAME}}", OUTPUT_DIR)
+    print(
+        f"Downloaded {{count}} file(s) from volume soup-outputs/{{RUN_NAME}} "
+        f"to {{OUTPUT_DIR}}"
+    )
+    print(
+        "Retry the download with: "
+        f"modal volume get soup-outputs /{{RUN_NAME}} {{OUTPUT_DIR}} --force"
+    )
 
 
 @app.local_entrypoint()
 def main() -> None:
-    train.remote()
+    try:
+        train.remote()
+    except BaseException:
+        # Save whatever the failed run left on the volume, but never let a
+        # download error replace the training error that explains the failure.
+        try:
+            _fetch_outputs()
+        except Exception as exc:
+            print(f"Could not download outputs after the failed run: {{exc!r}}")
+        raise
     _fetch_outputs()
 '''
 

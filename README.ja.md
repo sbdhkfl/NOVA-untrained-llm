@@ -1,4 +1,4 @@
-<!-- synced-from: README.md sha256:aa2170df59636760e0235b87cddf967a14e932605ed3abb16480115d99db6e40 -->
+<!-- synced-from: README.md sha256:5b6f673980b6bde5f8ed773ccd4df9608983316e8de5a9e85870b185563c8a3e -->
 <p align="center">🌍 <a href="README.md">English</a> | <a href="README.tr.md">Türkçe</a> | <a href="README.ar.md">العربية</a> | <strong>日本語</strong> | <a href="README.zh.md">中文</a></p>
 
 <p align="center">
@@ -264,6 +264,7 @@ output: ./output
 | ガイド | 内容 |
 |---|---|
 | [学習タスクと手法](docs/training.md) | SFT、DPO/GRPO/PPO/KTO/ORPO/SimPO/IPO/BCO、ツール呼び出し、PRM、事前学習、蒸留、分類、ビジョン/音声/TTS、アンラーニング、RAFT/RA-DIT、ループ強化検出器 |
+| [ゼロからの学習（`soup learn`）](docs/scratch-training.md) | 事前学習済み重みを持たない本物の未学習モデルを、あなたが承認した素材から段階的に学習 — 学習はすべてリモートの Modal 上で実行 |
 | [PEFT・長文脈・効率化](docs/peft-and-efficiency.md) | DoRA、LoRA+、rsLoRA、VeRA、OLoRA、NEFTune、PiSSA、ReLoRA、オプティマイザーと PEFT のラインナップ、LLaMA Pro、GaLore、YaRN/LongLoRA、パッキング、カリキュラム、自動チューニング |
 | [パフォーマンスと量子化](docs/performance-and-quantization.md) | QAT、FP8、Quant Menu（I + II）、KV キャッシュ、NVFP4、保存形式、Cut Cross-Entropy、勾配チェックポイント、カーネル、アクティベーションのオフロード、レイヤーストリーミング、マルチ GPU / DeepSpeed / FSDP |
 | [データエンジニアリング](docs/data.md) | 各種形式、Axolotl/LF 互換パイプライン、データツール、合成データ生成と forge、品質スコアカード、トレースツール、リモートデータセット、ミキシング、レシピ DAG |
@@ -296,11 +297,33 @@ soup export --model ./output --format gguf           # デプロイ用にエク�
 soup eval   benchmark --model ./output               # 評価
 soup data   inspect ./data/train.jsonl               # データセットの統計
 soup recipes list                     # 100 以上の既成モデルレシピ
+soup learn Python --from ./notes.md   # 素材からトピックを学習（Modal 上でリモート学習）
 soup autopilot --model <id> --data d.jsonl --goal chat  # 設定不要
 soup doctor                           # GPU / 依存関係 / 環境をチェック
 ```
 
 コマンドの完全な一覧は [`docs/commands.md`](docs/commands.md) にあります。
+
+### 新しいトピックを学習する（`soup learn`）
+
+`soup learn <request>` は素材（トピックのファイル、文書、またはデータセット）を
+**保留中**の例として取り込みます — 学習前に各例を確認し、明示的に承認します。
+学習は**リモートの Modal 上でのみ**実行されます（デフォルトは計画のみ；起動には
+`--cloud-submit`；暗黙のローカルフォールバックはありません）。その後
+`evaluate` → `register` → `generate` でループを閉じます:
+
+```bash
+soup learn Python --from ./notes.md    # or: soup learn from this document report.md
+soup learn review
+soup learn approve --all
+soup learn prepare --version v1
+soup learn train --dataset v1 --gpu a10g --cloud-submit
+soup learn evaluate learn/runs/v1-run --dataset v1
+soup learn register learn/runs/v1-run --dataset v1 --name my-scratch-v1
+soup learn generate learn/runs/v1-run --prompt "hello"
+```
+
+全体の流れ: [`docs/scratch-training.md`](docs/scratch-training.md)。
 
 ## 対応モデル
 
